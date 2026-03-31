@@ -6,10 +6,14 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<h1 id="dateTitle"></h1>
-<button onclick="lockDay()">End Day Lock</button>
-<button onclick="enableSetup()">Setup Mode</button>
 
+<div id="topbar">
+<button class="lock" onclick="lockDay()">End Day Lock</button>
+<button class="setup" onclick="confirmSetup()">Setup Mode</button>
+<button class="view" onclick="toggleView()">View Today</button>
+</div>
+
+<h1 id="dateTitle"></h1>
 <div id="app"></div>
 
 <div id="keypad">

@@ -1,4 +1,5 @@
 let activeIndex = 0;
+let viewMode = false;
 
 const assets = [
 "#1 Generator","#2 Generator","#3 Generator","#4 Generator","E-Generator",
@@ -16,11 +17,31 @@ function yesterdayKey(){let d=new Date();d.setDate(d.getDate()-1);return d.toISO
 function loadAll(){return JSON.parse(localStorage.getItem("engineDataAll")||"{}");}
 function saveAll(d){localStorage.setItem("engineDataAll",JSON.stringify(d));}
 
-function isSetup(){return localStorage.getItem("setup_"+todayKey())==="1";}
-function enableSetup(){localStorage.setItem("setup_"+todayKey(),"1");render();}
+function confirmSetup(){
+if(confirm("WARNING: Setup Mode will reset today’s counters. Continue?")){
+enableSetup();
+}}
 
+function enableSetup(){
+localStorage.setItem("setup_"+todayKey(),"1");
+viewMode=false;
+render();
+}
+
+function isSetup(){return localStorage.getItem("setup_"+todayKey())==="1";}
 function isLocked(){return localStorage.getItem("locked_"+todayKey())==="1";}
-function lockDay(){localStorage.setItem("locked_"+todayKey(),"1");localStorage.removeItem("setup_"+todayKey());render();}
+
+function lockDay(){
+localStorage.setItem("locked_"+todayKey(),"1");
+localStorage.removeItem("setup_"+todayKey());
+viewMode=true;
+render();
+}
+
+function toggleView(){
+viewMode = !viewMode;
+render();
+}
 
 function initDay(){
 let all=loadAll(),t=todayKey(),y=yesterdayKey();
@@ -45,6 +66,19 @@ let all=loadAll(),t=todayKey(),d=all[t];
 
 document.getElementById("dateTitle").innerText=t;
 app.innerHTML="";
+
+if(viewMode){
+document.getElementById("keypad").style.display="none";
+assets.forEach(name=>{
+let div=document.createElement("div");
+div.className="card";
+div.innerHTML=`<h3>${name} — ${d[name].today}</h3>`;
+app.appendChild(div);
+});
+return;
+}else{
+document.getElementById("keypad").style.display="block";
+}
 
 assets.forEach((name,i)=>{
 let prev=d[name].prev;

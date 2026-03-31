@@ -1,0 +1,10 @@
+body{font-family:Arial;background:#111;color:white;margin:0;padding-bottom:35vh;}
+#app{padding:10px;}
+.card{background:#222;margin-bottom:6px;padding:8px;border-radius:8px;}
+.card.active{border:2px solid #00ffcc;}
+.rowline{display:flex;justify-content:space-between;align-items:center;}
+input{width:120px;font-size:18px;text-align:right;}
+#keypad{position:fixed;bottom:0;width:100%;height:33vh;background:#000;}
+#keypad .row{display:flex;height:20%;}
+#keypad button{flex:1;font-size:22px;}
+.enter{background:#00aa88;}

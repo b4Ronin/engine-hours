@@ -69,15 +69,18 @@ app.innerHTML="";
 
 if(viewMode){
 document.getElementById("keypad").style.display="none";
+app.className="viewGrid";
+
 assets.forEach(name=>{
 let div=document.createElement("div");
-div.className="card";
-div.innerHTML=`<h3>${name} — ${d[name].today}</h3>`;
+div.className="viewItem";
+div.innerHTML=`<div class="label">${name}</div><div class="value">${d[name].today}</div>`;
 app.appendChild(div);
 });
 return;
 }else{
 document.getElementById("keypad").style.display="block";
+app.className="";
 }
 
 assets.forEach((name,i)=>{

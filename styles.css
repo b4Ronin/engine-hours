@@ -1,20 +1,48 @@
 body{font-family:Arial;background:#111;color:white;margin:0;padding-bottom:35vh;}
 
-#topbar{display:flex;height:60px;}
-#topbar button{
-flex:1;
-font-size:18px;
-font-weight:bold;
-}
+#topbar{display:flex;height:70px;}
+#topbar button{flex:1;font-size:20px;font-weight:bold;}
 
 .lock{background:#cc0000;color:white;}
 .setup{background:#e6b800;color:black;}
 .view{background:#00aa55;color:white;}
 
-#app{padding:10px;}
+#app{padding:6px;}
+
+/* VIEW MODE GRID */
+.viewGrid{
+display:grid;
+grid-template-columns:1fr 1fr;
+grid-auto-rows:1fr;
+height:calc(100vh - 140px);
+gap:6px;
+}
+
+.viewItem{
+background:#222;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+border-radius:8px;
+}
+
+.label{
+font-size:14px;
+opacity:0.8;
+}
+
+.value{
+font-size:28px;
+font-weight:bold;
+}
+
+/* NORMAL MODE */
 .card{background:#222;margin-bottom:6px;padding:8px;border-radius:8px;}
 .card.active{border:2px solid #00ffcc;}
+
 .rowline{display:flex;justify-content:space-between;align-items:center;}
+
 input{width:120px;font-size:18px;text-align:right;}
 
 #keypad{position:fixed;bottom:0;width:100%;height:33vh;background:#000;}

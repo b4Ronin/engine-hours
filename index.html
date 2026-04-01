@@ -1,27 +1,30 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Engine Hours</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
 <div id="topbar">
-<button id="finalizeBtn" class="lock" onclick="finalizeDay()">Finalize Day</button>
-<button class="setup" onclick="confirmSetup()">Setup</button>
-<button class="view" onclick="showLogs()">Logs</button>
+  <button id="finalizeBtn" class="lock" onclick="finalizeOrSummary()">Finalize Day</button>
+  <button class="setup" onclick="confirmSetup()">Setup</button>
+  <button class="view" onclick="showLogs()">Logs</button>
 </div>
 
-<h1 id="dateTitle"></h1>
+<div id="headerWrap">
+  <h1 id="dateTitle"></h1>
+  <div id="modeLabel">Entry</div>
+</div>
+
 <div id="app"></div>
 
 <div id="keypad">
-<div class="row"><button onclick="press(1)">1</button><button onclick="press(2)">2</button><button onclick="press(3)">3</button></div>
-<div class="row"><button onclick="press(4)">4</button><button onclick="press(5)">5</button><button onclick="press(6)">6</button></div>
-<div class="row"><button onclick="press(7)">7</button><button onclick="press(8)">8</button><button onclick="press(9)">9</button></div>
-<div class="row"><button onclick="press('.')">.</button><button onclick="press(0)">0</button><button onclick="back()">⌫</button></div>
-<div class="row"><button class="enter" onclick="nextField()">ENTER</button></div>
+  <div class="row"><button onclick="press(1)">1</button><button onclick="press(2)">2</button><button onclick="press(3)">3</button></div>
+  <div class="row"><button onclick="press(4)">4</button><button onclick="press(5)">5</button><button onclick="press(6)">6</button></div>
+  <div class="row"><button onclick="press(7)">7</button><button onclick="press(8)">8</button><button onclick="press(9)">9</button></div>
+  <div class="row"><button onclick="press('.')">.</button><button onclick="press(0)">0</button><button onclick="back()">⌫</button></div>
+  <div class="row"><button class="enter" onclick="nextField()">ENTER</button></div>
 </div>
 
 <script src="app.js"></script>

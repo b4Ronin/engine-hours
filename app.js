@@ -40,7 +40,7 @@ let d=all[date];
 document.getElementById("keypad").style.display="none";
 app.innerHTML=`<h2>${date}</h2>`;
 assets.forEach(name=>{
-app.innerHTML+=`<div class="card"><h3>${name} — ${d[name]?.today||""}</h3></div>`;
+app.innerHTML+=`<div class="card"><h3>${name}</h3><div>${d[name]?.today||""}</div></div>`;
 });
 }
 
@@ -49,10 +49,11 @@ let app=document.getElementById("app");
 let all=loadAll();
 app.innerHTML="";
 Object.keys(all).sort().reverse().forEach(date=>{
-let btn=document.createElement("button");
-btn.innerText=date;
-btn.onclick=()=>showSummary(date);
-app.appendChild(btn);
+let div=document.createElement("div");
+div.className="card";
+div.innerHTML=`<h3>${date}</h3>`;
+div.onclick=()=>showSummary(date);
+app.appendChild(div);
 });
 document.getElementById("keypad").style.display="none";
 }

@@ -1,0 +1,50 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont;
+  background: #111;
+  color: white;
+  text-align: center;
+  margin: 0;
+}
+
+.container {
+  padding: 20px;
+}
+
+input {
+  width: 90%;
+  padding: 15px;
+  margin-bottom: 15px;
+  font-size: 18px;
+  border-radius: 10px;
+  border: none;
+}
+
+button {
+  width: 90%;
+  padding: 20px;
+  margin: 10px;
+  font-size: 20px;
+  border-radius: 12px;
+  border: none;
+}
+
+#finalizeBtn {
+  background: #ffcc00;
+  color: black;
+}
+
+#logsBtn {
+  background: #333;
+  color: white;
+}
+
+.hidden {
+  display: none;
+}
+
+.card {
+  background: #222;
+  padding: 15px;
+  margin: 10px;
+  border-radius: 10px;
+}

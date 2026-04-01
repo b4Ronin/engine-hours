@@ -1,45 +1,119 @@
-let finalized = false;
+let activeIndex=0;
+let mode="entry";
 
-const finalizeBtn = document.getElementById("finalizeBtn");
-const logsBtn = document.getElementById("logsBtn");
-const input = document.getElementById("hoursInput");
-const summaryDiv = document.getElementById("summary");
-const logsDiv = document.getElementById("logs");
+const assets=[
+"#1 Generator","#2 Generator","#3 Generator","#4 Generator","E-Generator",
+"Air Comp #1","Air Comp #2",
+"BT #1 Fwd","BT #2 Aft",
+"Azipull #2 Port","Azipull #1 Stbd",
+"Drybulk #1","Drybulk #2",
+"SCBA #1",
+"Liquid Mud #1","Liquid Mud #2","Liquid Mud #3","Liquid Mud #4"
+];
 
-finalizeBtn.onclick = () => {
-  if (!finalized) {
-    const hours = input.value;
-    if (!hours) return;
+function todayKey(){return new Date().toISOString().split('T')[0];}
+function loadAll(){return JSON.parse(localStorage.getItem("engineDataAll")||"{}");}
+function saveAll(d){localStorage.setItem("engineDataAll",JSON.stringify(d));}
 
-    const today = new Date().toLocaleDateString();
+function confirmSetup(){
+if(confirm("Reset all data?")){
+localStorage.clear();location.reload();
+}}
 
-    let logs = JSON.parse(localStorage.getItem("engineLogs")) || [];
-    logs.push({ date: today, hours });
-    localStorage.setItem("engineLogs", JSON.stringify(logs));
-
-    finalized = true;
-    finalizeBtn.innerText = "View Summary";
-
-    showSummary(today, hours);
-  } else {
-    toggle(summaryDiv);
-  }
-};
-
-logsBtn.onclick = () => {
-  const logs = JSON.parse(localStorage.getItem("engineLogs")) || [];
-  logsDiv.innerHTML = "<h3>Logs</h3>";
-  logs.forEach(log => {
-    logsDiv.innerHTML += `<div class="card">${log.date} — ${log.hours} hrs</div>`;
-  });
-  toggle(logsDiv);
-};
-
-function showSummary(date, hours) {
-  summaryDiv.innerHTML = `<h3>Summary</h3><div class="card">${date} — ${hours} hrs</div>`;
-  summaryDiv.classList.remove("hidden");
+function finalizeDay(){
+let t=todayKey();
+localStorage.setItem("locked_"+t,"1");
+document.getElementById("finalizeBtn").innerText="Summary";
+showSummary(t);
 }
 
-function toggle(el) {
-  el.classList.toggle("hidden");
+function showLogs(){
+mode="logs";
+renderLogs();
 }
+
+function showSummary(date){
+mode="summary";
+let app=document.getElementById("app");
+let all=loadAll();
+let d=all[date];
+document.getElementById("keypad").style.display="none";
+app.innerHTML=`<h2>${date}</h2>`;
+assets.forEach(name=>{
+app.innerHTML+=`<div class="card"><h3>${name} — ${d[name]?.today||""}</h3></div>`;
+});
+}
+
+function renderLogs(){
+let app=document.getElementById("app");
+let all=loadAll();
+app.innerHTML="";
+Object.keys(all).sort().reverse().forEach(date=>{
+let btn=document.createElement("button");
+btn.innerText=date;
+btn.onclick=()=>showSummary(date);
+app.appendChild(btn);
+});
+document.getElementById("keypad").style.display="none";
+}
+
+function initDay(){
+let all=loadAll(),t=todayKey();
+if(!all[t]){
+all[t]={};
+assets.forEach(n=>{all[t][n]={prev:0,today:""}});
+saveAll(all);
+}}
+
+function render(){
+if(mode!=="entry")return;
+let app=document.getElementById("app");
+let all=loadAll(),t=todayKey(),d=all[t];
+document.getElementById("dateTitle").innerText=t;
+app.innerHTML="";
+assets.forEach((name,i)=>{
+let val=d[name].today;
+let div=document.createElement("div");
+div.className="card "+(i===activeIndex?"active":"");
+div.innerHTML=`<h3>${name}</h3><div class="rowline"><input readonly value="${val||""}" onclick="activeIndex=${i};render()"/></div>`;
+app.appendChild(div);
+});
+}
+
+function press(v){
+let all=loadAll(),t=todayKey();
+let cur=all[t][assets[activeIndex]].today||"";
+cur+=v;
+update(assets[activeIndex],cur);
+}
+
+function back(){
+let all=loadAll(),t=todayKey();
+let cur=all[t][assets[activeIndex]].today||"";
+cur=cur.slice(0,-1);
+update(assets[activeIndex],cur);
+}
+
+function nextField(){
+activeIndex=(activeIndex+1)%assets.length;
+render();
+}
+
+function update(name,value){
+let all=loadAll(),t=todayKey(),d=all[t];
+value=value===""?"":Number(value);
+d[name].today=value;
+
+if(name==="BT #2 Aft"){
+let diff=value-d["BT #2 Aft"].prev;
+d["BT #1 Fwd"].today=d["BT #1 Fwd"].prev+diff;
+}
+if(name==="Azipull #2 Port"){
+let diff=value-d["Azipull #2 Port"].prev;
+d["Azipull #1 Stbd"].today=d["Azipull #1 Stbd"].prev+diff;
+}
+
+saveAll(all);render();
+}
+
+initDay();render();

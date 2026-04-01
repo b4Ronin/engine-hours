@@ -8,8 +8,6 @@ body{font-family:Arial,sans-serif;background:#0b0f14;color:#fff;margin:0;padding
 #dateTitle{margin:0;font-size:28px}
 #modeLabel{background:#1f2d3d;color:#d9e8ff;border-radius:999px;padding:8px 12px;font-weight:700}
 #app{padding:8px 10px}
-.section{margin:8px 0 12px 0}
-.section-title{font-size:22px;font-weight:900;color:#f0c400;margin:0 0 8px 2px;padding-bottom:4px;border-bottom:2px solid #2d3748;letter-spacing:.4px}
 .card{background:#1a1f2b;margin-bottom:8px;padding:12px;border-radius:12px;border:1px solid #2a3345}
 .card.active{border:2px solid #00e5c3;box-shadow:0 0 0 1px rgba(0,229,195,.25)}
 .card.auto{background:#182330}

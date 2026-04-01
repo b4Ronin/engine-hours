@@ -80,16 +80,26 @@ function renderLogs(){
   });
 }
 
+
 function initDay(){
-  const firstRun=!localStorage.getItem("baseline_set");
+  const all = loadAll();
+  const t = todayKey();
+
+  const firstRun = !localStorage.getItem("baseline_set");
   if(firstRun){
-    let bt1=prompt("Enter TOTAL hours for BT #1 Fwd (baseline):","0");
-    let azi1=prompt("Enter TOTAL hours for Azipull #1 Stbd (baseline):","0");
-    if(!all[t]) all[t]={};
+    let bt1 = prompt("Enter TOTAL hours for BT #1 Fwd (baseline):","0");
+    let azi1 = prompt("Enter TOTAL hours for Azipull #1 Stbd (baseline):","0");
+
+    if(!all[t]) all[t] = {};
+
     assets.forEach(n=>{
-      if(n==="BT #1 Fwd") all[t][n]={prev:Number(bt1)||0,today:""};
-      else if(n==="Azipull #1 Stbd") all[t][n]={prev:Number(azi1)||0,today:""};
+      if(n==="BT #1 Fwd"){
+        all[t][n] = { prev: Number(bt1)||0, today: "" };
+      } else if(n==="Azipull #1 Stbd"){
+        all[t][n] = { prev: Number(azi1)||0, today: "" };
+      }
     });
+
     localStorage.setItem("baseline_set","1");
     saveAll(all);
   }
@@ -109,7 +119,7 @@ function initDay(){
 
 function getNextIndex(i){
   let n=(i+1)%assets.length;
-  while(false){
+  while(assets[n]==="BT #1 Fwd"||assets[n]==="Azipull #1 Stbd"){
     n=(n+1)%assets.length;
   }
   return n;
@@ -128,7 +138,7 @@ function render(){
   assets.forEach((name,i)=>{
     const val=d[name].today;
     const prev=d[name].prev;
-    const isAuto=false;
+    const isAuto=(name==="BT #1 Fwd"||name==="Azipull #1 Stbd");
     const disabled=isLocked()||isAuto;
     const div=document.createElement("div");
     div.className="card"+(i===activeIndex&&!isLocked()&&!isAuto?" active":"")+(isAuto?" auto":"");
@@ -145,7 +155,7 @@ function render(){
 
 function focusField(i){
   if(isLocked()) return;
-  
+  if(assets[i]==="BT #1 Fwd"||assets[i]==="Azipull #1 Stbd") return;
   activeIndex=i;
   render();
 }
@@ -153,7 +163,7 @@ function focusField(i){
 function press(v){
   if(isLocked()) return;
   const name=assets[activeIndex];
-  
+  if(name==="BT #1 Fwd"||name==="Azipull #1 Stbd") return;
   const all=loadAll(), t=todayKey();
   let cur=(all[t][name].today ?? "").toString();
   if(cur==="0") cur="";
@@ -165,7 +175,7 @@ function press(v){
 function back(){
   if(isLocked()) return;
   const name=assets[activeIndex];
-  
+  if(name==="BT #1 Fwd"||name==="Azipull #1 Stbd") return;
   const all=loadAll(), t=todayKey();
   let cur=(all[t][name].today ?? "").toString();
   cur=cur.slice(0,-1);
@@ -182,9 +192,15 @@ function update(name,value){
   const all=loadAll(), t=todayKey(), d=all[t];
   d[name].today=value===""?"":Number(value);
 
-  
+  if(name==="BT #2 Aft"){
+    const diff=(Number(d["BT #2 Aft"].today)||0)-(Number(d["BT #2 Aft"].prev)||0);
+    d["BT #1 Fwd"].today=(Number(d["BT #1 Fwd"].prev)||0)+diff;
+  }
 
-  
+  if(name==="Azipull #2 Port"){
+    const diff=(Number(d["Azipull #2 Port"].today)||0)-(Number(d["Azipull #2 Port"].prev)||0);
+    d["Azipull #1 Stbd"].today=(Number(d["Azipull #1 Stbd"].prev)||0)+diff;
+  }
 
   saveAll(all);
   render();

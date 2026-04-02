@@ -1,1 +1,15 @@
-All tests passed.
+Engine Hours V8 verification
+
+Verified:
+- All 18 systems present, including E-Generator, both Air Compressors, both BTs, both Azipulls, Drybulk 1-2, SCBA 1, and Liquid Mud 1-4.
+- ENTER button present in keypad.
+- Multi-day carry-forward logic verified with 1-hour progression across multiple days.
+- Previous-hour values verified as the source for the next day's Prev display data.
+- Past-day edit propagation verified: editing a prior day updates future days for the edited engine totals.
+- Auto-paired calculations verified:
+  - BT #1 Fwd follows BT #2 Aft difference.
+  - Azipull #1 Stbd follows Azipull #2 Port difference.
+- New day creation verified: previous totals carry into the new day Prev values.
+- Offline support file included: service-worker.js.
+
+Test harness executed successfully in Node against the packaged app logic.

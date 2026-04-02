@@ -1,39 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Engine Hours</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="top-bar">
-    <button id="finalizeBtn" class="pill pill-primary">Finalize Day</button>
-    <button id="setupBtn" class="pill pill-accent">Summary</button>
-    <button id="logsBtn" class="pill pill-secondary">Logs</button>
-  </header>
+  <div id="topbar">
+    <button id="finalizeBtn" class="lock" type="button">Finalize Day</button>
+    <button id="setupBtn" class="setup" type="button">Setup</button>
+    <button id="logsBtn" class="view" type="button">Logs</button>
+  </div>
 
-  <main id="mainContent" aria-live="polite"></main>
+  <div id="headerWrap">
+    <h1 id="dateTitle"></h1>
+    <div id="modeLabel">Entry</div>
+  </div>
 
-  <div id="keypad" aria-label="Number keypad">
-    <div class="keys">
-      <button type="button" data-key="1">1</button>
-      <button type="button" data-key="2">2</button>
-      <button type="button" data-key="3">3</button>
-      <button type="button" data-key="4">4</button>
-      <button type="button" data-key="5">5</button>
-      <button type="button" data-key="6">6</button>
-      <button type="button" data-key="7">7</button>
-      <button type="button" data-key="8">8</button>
-      <button type="button" data-key="9">9</button>
-      <button type="button" data-key=".">.</button>
-      <button type="button" data-key="0">0</button>
-      <button type="button" data-action="backspace">⌫</button>
+  <div id="app"></div>
+
+  <div id="keypad" aria-label="Number pad">
+    <div class="row">
+      <button type="button" onclick="press(1)">1</button>
+      <button type="button" onclick="press(2)">2</button>
+      <button type="button" onclick="press(3)">3</button>
     </div>
-    <button type="button" id="enterBtn">ENTER</button>
+    <div class="row">
+      <button type="button" onclick="press(4)">4</button>
+      <button type="button" onclick="press(5)">5</button>
+      <button type="button" onclick="press(6)">6</button>
+    </div>
+    <div class="row">
+      <button type="button" onclick="press(7)">7</button>
+      <button type="button" onclick="press(8)">8</button>
+      <button type="button" onclick="press(9)">9</button>
+    </div>
+    <div class="row">
+      <button type="button" onclick="press('.')">.</button>
+      <button type="button" onclick="press(0)">0</button>
+      <button type="button" onclick="back()">⌫</button>
+    </div>
+    <div class="row">
+      <button type="button" class="enter" onclick="nextField()">ENTER</button>
+    </div>
   </div>
 
   <script src="app.js"></script>

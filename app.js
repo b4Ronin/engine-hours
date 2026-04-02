@@ -1,466 +1,643 @@
-(function () {
-  const STORAGE_KEY = "engine-hours-v2";
-  const ENGINE_NAMES = [
-    "Gen 1",
-    "Gen 2",
-    "Gen 3",
-    "Gen 4",
-    "FWD BT",
-    "AFT BT",
-    "Port Azipull",
-    "Stbd Azipull"
-  ];
+const assets = [
+  "#1 Generator",
+  "#2 Generator",
+  "#3 Generator",
+  "#4 Generator",
+  "E-Generator",
+  "Air Comp #1",
+  "Air Comp #2",
+  "BT #1 Fwd",
+  "BT #2 Aft",
+  "Azipull #2 Port",
+  "Azipull #1 Stbd",
+  "Drybulk #1",
+  "Drybulk #2",
+  "SCBA #1",
+  "Liquid Mud #1",
+  "Liquid Mud #2",
+  "Liquid Mud #3",
+  "Liquid Mud #4"
+];
 
-  const VIEW = {
-    TODAY: "today",
-    LOGS: "logs",
-    PAST: "past",
-    SUMMARY: "summary"
-  };
+const AUTO_SOURCE = {
+  "BT #1 Fwd": "BT #2 Aft",
+  "Azipull #1 Stbd": "Azipull #2 Port"
+};
+const AUTO_ASSETS = new Set(Object.keys(AUTO_SOURCE));
+const STORAGE_KEY = "engineDataAll";
+const SETUP_KEY = "engineSetupDone";
 
-  let appState = null;
-  let uiState = {
-    view: VIEW.TODAY,
-    selectedDate: isoToday(),
-    editMode: true,
-    activeInputIndex: 0,
-    previousView: VIEW.TODAY
-  };
+let activeIndex = 0;
+let mode = "entry"; // setup | entry | summary | logs | edit
+let lastTouch = 0;
+let selectedDate = todayKey();
 
-  function isoToday() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+function todayKey() {
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const yyyy = now.getFullYear();
+  return `${mm}/${dd}/${yyyy}`;
+}
+
+function parseDateKey(key) {
+  const parts = key.split("/");
+  return new Date(Number(parts[2]), Number(parts[0]) - 1, Number(parts[1]));
+}
+
+function sortDateKeys(keys) {
+  return [...keys].sort((a, b) => parseDateKey(a) - parseDateKey(b));
+}
+
+function numeric(value) {
+  if (value === "" || value === null || value === undefined) return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function formatNumber(value) {
+  const num = numeric(value);
+  if (num === null) return "";
+  return Number.isInteger(num) ? String(num) : String(num);
+}
+
+function loadAll() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveAll(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function isSetupDone() {
+  return localStorage.getItem(SETUP_KEY) === "1";
+}
+
+function setSetupDone() {
+  localStorage.setItem(SETUP_KEY, "1");
+}
+
+function lockKey(date) {
+  return `locked_${date}`;
+}
+
+function isLocked(date = todayKey()) {
+  return localStorage.getItem(lockKey(date)) === "1";
+}
+
+function setLocked(date, value) {
+  localStorage.setItem(lockKey(date), value ? "1" : "0");
+}
+
+function getPreviousDateKey(all, currentDate) {
+  const current = parseDateKey(currentDate);
+  const prior = Object.keys(all).filter(d => parseDateKey(d) < current);
+  if (!prior.length) return null;
+  return sortDateKeys(prior)[prior.length - 1];
+}
+
+function previousDateData(all, currentDate) {
+  const prevKey = getPreviousDateKey(all, currentDate);
+  return prevKey ? all[prevKey] : null;
+}
+
+function blankDayFromPrevious(prevDay) {
+  const day = {};
+  assets.forEach(name => {
+    const prev = prevDay ? numeric(prevDay[name] && prevDay[name].current) : null;
+    day[name] = {
+      prev: prev === null ? 0 : prev,
+      current: "",
+      manual: !AUTO_ASSETS.has(name)
+    };
+  });
+  return day;
+}
+
+function ensureRecord(date) {
+  const all = loadAll();
+  if (!all[date]) {
+    const prevDay = previousDateData(all, date);
+    all[date] = blankDayFromPrevious(prevDay);
+    saveAll(all);
+  }
+  return all;
+}
+
+function initializeSetupDay(forceReset = false) {
+  const t = todayKey();
+  const all = forceReset ? {} : loadAll();
+  const day = {};
+  assets.forEach(name => {
+    day[name] = {
+      prev: 0,
+      current: "",
+      manual: true
+    };
+  });
+  all[t] = day;
+  saveAll(all);
+  setLocked(t, false);
+  selectedDate = t;
+  mode = "setup";
+  activeIndex = 0;
+  render();
+  setTimeout(scrollActiveIntoView, 60);
+}
+
+function confirmSetup() {
+  const hasData = Object.keys(loadAll()).length > 0 || isSetupDone();
+  if (hasData) {
+    const ok = confirm("Reset all saved data and setup from today's totals?");
+    if (!ok) return;
+    localStorage.clear();
+  }
+  initializeSetupDay(true);
+}
+
+function currentEditingDate() {
+  return selectedDate || todayKey();
+}
+
+function currentDayData() {
+  const date = currentEditingDate();
+  const all = ensureRecord(date);
+  return all[date];
+}
+
+function setHeader(dateText, labelText) {
+  const title = document.getElementById("dateTitle");
+  const label = document.getElementById("modeLabel");
+  if (title) title.innerText = dateText;
+  if (label) label.innerText = labelText;
+}
+
+function isAutoAsset(name) {
+  return isSetupDone() && AUTO_ASSETS.has(name);
+}
+
+function canEditCurrentMode(name) {
+  if (mode === "setup") return true;
+  if (mode === "entry" || mode === "edit") return !isAutoAsset(name);
+  return false;
+}
+
+function focusField(i) {
+  if (!(mode === "entry" || mode === "setup" || mode === "edit")) return;
+  const name = assets[i];
+  if (!canEditCurrentMode(name)) return;
+  activeIndex = i;
+  render();
+  setTimeout(scrollActiveIntoView, 60);
+}
+
+function getNextIndex(i) {
+  let n = (i + 1) % assets.length;
+  while ((mode === "entry" || mode === "edit") && isAutoAsset(assets[n])) {
+    n = (n + 1) % assets.length;
+  }
+  return n;
+}
+
+function updateAutoPairs(day) {
+  Object.keys(AUTO_SOURCE).forEach(targetName => {
+    const sourceName = AUTO_SOURCE[targetName];
+    const sourceCurrent = numeric(day[sourceName].current);
+    const sourcePrev = numeric(day[sourceName].prev) ?? 0;
+    const targetPrev = numeric(day[targetName].prev) ?? 0;
+
+    if (sourceCurrent === null) {
+      day[targetName].current = "";
+    } else {
+      const diff = sourceCurrent - sourcePrev;
+      day[targetName].current = targetPrev + diff;
+    }
+  });
+}
+
+function updateValue(name, nextString) {
+  const all = ensureRecord(currentEditingDate());
+  const day = all[currentEditingDate()];
+
+  if (nextString === "") {
+    day[name].current = "";
+  } else {
+    day[name].current = Number(nextString);
   }
 
-  function createEmptyState() {
-    return { logs: {} };
+  if (mode === "entry" || mode === "edit") {
+    updateAutoPairs(day);
   }
 
-  function deepClone(value) {
-    return JSON.parse(JSON.stringify(value));
-  }
+  saveAll(all);
+  render();
+  setTimeout(scrollActiveIntoView, 60);
+}
 
-  function safeNumber(value) {
-    if (value === null || value === undefined || value === "") return null;
-    const num = Number(value);
-    return Number.isFinite(num) ? num : null;
-  }
+function press(value) {
+  if (!(mode === "entry" || mode === "setup" || mode === "edit")) return;
+  const name = assets[activeIndex];
+  if (!canEditCurrentMode(name)) return;
 
-  function formatHours(value) {
-    const num = safeNumber(value);
-    if (num === null) return "0";
-    if (Math.abs(num - Math.round(num)) < 1e-9) return String(Math.round(num));
-    return String(Number(num.toFixed(2)));
-  }
+  const day = currentDayData();
+  let current = day[name].current === "" ? "" : String(day[name].current);
+  if (current === "0") current = "";
+  if (value === "." && current.includes(".")) return;
+  current += String(value);
+  updateValue(name, current);
+}
 
-  function formatDelta(prev, end) {
-    const delta = (safeNumber(end) ?? 0) - (safeNumber(prev) ?? 0);
-    return formatHours(delta);
-  }
+function back() {
+  if (!(mode === "entry" || mode === "setup" || mode === "edit")) return;
+  const name = assets[activeIndex];
+  if (!canEditCurrentMode(name)) return;
 
-  function loadState(storage) {
-    try {
-      const raw = storage.getItem(STORAGE_KEY);
-      if (!raw) return createEmptyState();
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== "object" || !parsed.logs) return createEmptyState();
-      return parsed;
-    } catch (error) {
-      return createEmptyState();
+  const day = currentDayData();
+  let current = day[name].current === "" ? "" : String(day[name].current);
+  current = current.slice(0, -1);
+  updateValue(name, current);
+}
+
+function nextField() {
+  if (!(mode === "entry" || mode === "setup" || mode === "edit")) return;
+  activeIndex = getNextIndex(activeIndex);
+  render();
+  setTimeout(scrollActiveIntoView, 60);
+}
+
+function renderEntryOrSetup() {
+  const app = document.getElementById("app");
+  const day = currentDayData();
+  const date = currentEditingDate();
+  const keypad = document.getElementById("keypad");
+  const finalizeBtn = document.getElementById("finalizeBtn");
+  const setupBtn = document.getElementById("setupBtn");
+
+  const label = mode === "setup" ? "Setup" : (mode === "edit" ? "Edit" : (isLocked(date) ? "Locked" : "Entry"));
+  setHeader(date, label);
+
+  if (finalizeBtn) {
+    if (mode === "edit") {
+      finalizeBtn.innerText = "View Summary";
+    } else {
+      finalizeBtn.innerText = isLocked(date) ? "View Summary" : "Finalize Day";
     }
   }
-
-  function saveState(storage, state) {
-    storage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (setupBtn) {
+    if (mode === "edit") setupBtn.innerText = "Finalize This Day";
+    else setupBtn.innerText = "Setup";
   }
+  if (keypad) keypad.classList.remove("hidden");
 
-  function getSortedDates(state) {
-    return Object.keys(state.logs).sort();
-  }
+  app.innerHTML = "";
 
-  function getPriorDates(state, date) {
-    return getSortedDates(state).filter((d) => d < date);
-  }
+  assets.forEach((name, i) => {
+    const isAuto = (mode === "entry" || mode === "edit") && isAutoAsset(name);
+    const editable = canEditCurrentMode(name);
+    const current = day[name].current;
+    const prev = numeric(day[name].prev) ?? 0;
+    const subtitle = mode === "setup"
+      ? "Enter current total hours"
+      : (isAuto ? "AUTO from paired unit difference" : `Prev: ${formatNumber(prev)}`);
 
-  function getFutureDates(state, date) {
-    return getSortedDates(state).filter((d) => d > date);
-  }
+    const div = document.createElement("div");
+    div.className = "card" +
+      ((i === activeIndex && editable) ? " active" : "") +
+      (isAuto ? " auto" : "");
 
-  function getPreviousEnd(state, date, engineName) {
-    const priorDates = getPriorDates(state, date).reverse();
-    for (const priorDate of priorDates) {
-      const entry = state.logs[priorDate]?.entries?.[engineName];
-      const end = safeNumber(entry?.end);
-      if (end !== null) return end;
-    }
-    return 0;
-  }
-
-  function getDayEntriesForDisplay(state, date) {
-    const existing = state.logs[date]?.entries || {};
-    return ENGINE_NAMES.map((engineName) => {
-      const prev = getPreviousEnd(state, date, engineName);
-      const savedEnd = safeNumber(existing[engineName]?.end);
-      const end = savedEnd === null ? prev : savedEnd;
-      return { engineName, prev, end, delta: (end - prev) };
-    });
-  }
-
-  function finalizeDayData(state, date, enteredEnds) {
-    const nextState = deepClone(state);
-    const previousEntries = nextState.logs[date]?.entries || {};
-    const newEntries = {};
-    const diffMap = {};
-
-    ENGINE_NAMES.forEach((engineName) => {
-      const prev = getPreviousEnd(nextState, date, engineName);
-      const oldEnd = safeNumber(previousEntries[engineName]?.end);
-      const normalized = safeNumber(enteredEnds[engineName]);
-      const end = normalized === null ? prev : normalized;
-      newEntries[engineName] = { end };
-      diffMap[engineName] = (oldEnd === null ? end : end - oldEnd);
-    });
-
-    nextState.logs[date] = {
-      finalized: true,
-      updatedAt: new Date().toISOString(),
-      entries: newEntries
-    };
-
-    const futureDates = getFutureDates(nextState, date);
-    futureDates.forEach((futureDate) => {
-      const log = nextState.logs[futureDate];
-      if (!log || !log.entries) return;
-      ENGINE_NAMES.forEach((engineName) => {
-        const diff = diffMap[engineName];
-        if (!diff) return;
-        const oldFutureEnd = safeNumber(log.entries[engineName]?.end);
-        if (oldFutureEnd === null) return;
-        log.entries[engineName] = { end: oldFutureEnd + diff };
-      });
-    });
-
-    return nextState;
-  }
-
-  function buildSummaryModel(state, date) {
-    return {
-      date,
-      entries: getDayEntriesForDisplay(state, date).map((item) => ({
-        engineName: item.engineName,
-        prev: formatHours(item.prev),
-        end: formatHours(item.end),
-        delta: formatHours(item.delta)
-      }))
-    };
-  }
-
-  function getInputValuesFromDom() {
-    const values = {};
-    const inputs = Array.from(document.querySelectorAll(".engine-input"));
-    inputs.forEach((input) => {
-      values[input.dataset.engine] = input.value.trim();
-    });
-    return values;
-  }
-
-  function focusInput(index) {
-    const inputs = Array.from(document.querySelectorAll(".engine-input"));
-    if (!inputs.length) return;
-    const bounded = Math.max(0, Math.min(index, inputs.length - 1));
-    uiState.activeInputIndex = bounded;
-    const input = inputs[bounded];
-    input.focus();
-    centerInput(input);
-  }
-
-  function centerInput(input) {
-    const container = document.getElementById("mainContent");
-    if (!container || !input) return;
-    const keypad = document.getElementById("keypad");
-    const keypadHeight = keypad ? keypad.offsetHeight : 0;
-    const visibleHeight = Math.max(100, window.innerHeight - keypadHeight - 72);
-    const targetTop = Math.max(0, input.offsetTop - ((visibleHeight - input.offsetHeight) / 2) - 24);
-    container.scrollTo({ top: targetTop, behavior: "smooth" });
-  }
-
-  function renderTodayOrPast() {
-    const date = uiState.selectedDate;
-    const entries = getDayEntriesForDisplay(appState, date);
-    const readonly = !uiState.editMode;
-    const main = document.getElementById("mainContent");
-    const subtitle = uiState.view === VIEW.PAST
-      ? (readonly ? "Saved log" : "Editing saved log")
-      : "Current day";
-
-    main.innerHTML = `
-      <div class="screen-title">${date}</div>
-      <div class="screen-subtitle">${subtitle}</div>
-      ${entries.map((item, index) => `
-        <section class="engine-card">
-          <div class="engine-name">${item.engineName}</div>
-          <div class="meta-row">
-            <span>Previous: ${formatHours(item.prev)}</span>
-            <span class="delta">Δ ${formatHours(item.delta)}</span>
-          </div>
-          <input
-            class="engine-input"
-            type="text"
-            inputmode="decimal"
-            autocomplete="off"
-            spellcheck="false"
-            data-engine="${item.engineName}"
-            data-index="${index}"
-            value="${formatHours(item.end)}"
-            ${readonly ? "readonly" : ""}
-          />
-        </section>
-      `).join("")}
+    div.innerHTML = `
+      <div class="rowline">
+        <div class="labelWrap">
+          <div class="asset-title">${name}</div>
+          <div class="asset-sub">${subtitle}</div>
+        </div>
+        <input
+          class="reading"
+          readonly
+          value="${formatNumber(current)}"
+          ${editable ? "" : "disabled"}
+        >
+      </div>
     `;
 
-    const inputs = Array.from(document.querySelectorAll(".engine-input"));
-    inputs.forEach((input) => {
-      input.addEventListener("focus", () => {
-        uiState.activeInputIndex = Number(input.dataset.index || 0);
-        centerInput(input);
-      });
-      input.addEventListener("click", () => centerInput(input));
-    });
+    div.querySelector("input").addEventListener("click", () => focusField(i));
+    div.addEventListener("click", () => focusField(i));
+    app.appendChild(div);
+  });
+}
+
+function summaryValueForAsset(day, name) {
+  if (!day || !day[name]) return "";
+  if (day[name].current === "" || day[name].current === null || day[name].current === undefined) {
+    return formatNumber(day[name].prev || 0);
   }
+  return formatNumber(day[name].current);
+}
 
-  function renderLogs() {
-    const dates = getSortedDates(appState).sort().reverse();
-    const main = document.getElementById("mainContent");
-    if (!dates.length) {
-      main.innerHTML = `
-        <div class="screen-title">Logs</div>
-        <div class="message-card">No saved days yet.</div>
-      `;
-      return;
-    }
+function showSummary(date) {
+  selectedDate = date;
+  mode = "summary";
+  const app = document.getElementById("app");
+  const all = loadAll();
+  const day = all[date] || {};
+  const keypad = document.getElementById("keypad");
+  const finalizeBtn = document.getElementById("finalizeBtn");
+  const setupBtn = document.getElementById("setupBtn");
 
-    main.innerHTML = `
-      <div class="screen-title">Logs</div>
-      ${dates.map((date) => {
-        const model = buildSummaryModel(appState, date);
-        const totalDelta = model.entries.reduce((sum, item) => sum + Number(item.delta), 0);
-        return `
-          <section class="log-card">
-            <button class="log-button" type="button" data-log-date="${date}">${date}</button>
-            <div class="log-meta">Total added across all systems: ${formatHours(totalDelta)}</div>
-          </section>
-        `;
-      }).join("")}
+  if (keypad) keypad.classList.add("hidden");
+  if (finalizeBtn) finalizeBtn.innerText = isLocked(date) ? "View Summary" : "Finalize Day";
+  if (setupBtn) setupBtn.innerText = "Edit This Day";
+  setHeader(date, "Summary");
+
+  app.innerHTML = `<div class="summaryHeader">Summary — ${date}</div>`;
+  assets.forEach(name => {
+    app.innerHTML += `
+      <div class="card">
+        <div class="rowline">
+          <div class="asset-title">${name}</div>
+          <div class="summaryValue">${summaryValueForAsset(day, name)}</div>
+        </div>
+      </div>
     `;
+  });
+}
 
-    Array.from(document.querySelectorAll("[data-log-date]")).forEach((button) => {
-      button.addEventListener("click", () => {
-        uiState.view = VIEW.PAST;
-        uiState.previousView = VIEW.LOGS;
-        uiState.selectedDate = button.dataset.logDate;
-        uiState.editMode = false;
-        render();
-      });
+function renderLogs() {
+  mode = "logs";
+  const app = document.getElementById("app");
+  const all = loadAll();
+  const dates = sortDateKeys(Object.keys(all)).reverse();
+  const keypad = document.getElementById("keypad");
+  const finalizeBtn = document.getElementById("finalizeBtn");
+  const setupBtn = document.getElementById("setupBtn");
+
+  if (keypad) keypad.classList.add("hidden");
+  if (finalizeBtn) finalizeBtn.innerText = isLocked(todayKey()) ? "View Summary" : "Finalize Day";
+  if (setupBtn) setupBtn.innerText = "Setup";
+  setHeader(todayKey(), "Logs");
+
+  app.innerHTML = "";
+  if (!dates.length) {
+    app.innerHTML = '<div class="card"><div class="asset-title">No saved logs yet</div></div>';
+    return;
+  }
+
+  dates.forEach(date => {
+    const button = document.createElement("button");
+    button.className = "logButton";
+    button.type = "button";
+    button.textContent = date;
+    button.addEventListener("click", () => showSummary(date));
+    app.appendChild(button);
+  });
+}
+
+function shiftFutureDaysFrom(date) {
+  const all = loadAll();
+  const dates = sortDateKeys(Object.keys(all));
+  const startIndex = dates.indexOf(date);
+  if (startIndex === -1) return;
+
+  for (let i = startIndex + 1; i < dates.length; i++) {
+    const prevDate = dates[i - 1];
+    const currentDate = dates[i];
+    const prevDay = all[prevDate];
+    const day = all[currentDate];
+
+    assets.forEach(name => {
+      const newPrev = numeric(prevDay[name].current) ?? numeric(prevDay[name].prev) ?? 0;
+      const oldPrev = numeric(day[name].prev) ?? 0;
+      const oldCurrent = numeric(day[name].current);
+
+      day[name].prev = newPrev;
+
+      if (!isAutoAsset(name)) {
+        if (oldCurrent === null) {
+          day[name].current = "";
+        } else {
+          const delta = oldCurrent - oldPrev;
+          day[name].current = newPrev + delta;
+        }
+      }
     });
+
+    updateAutoPairs(day);
   }
 
-  function renderSummary() {
-    const model = buildSummaryModel(appState, uiState.selectedDate);
-    const main = document.getElementById("mainContent");
-    main.innerHTML = `
-      <div class="screen-title">Summary</div>
-      <div class="screen-subtitle">${model.date}</div>
-      <section class="summary-card">
-        <div class="summary-date">${model.date}</div>
-        ${model.entries.map((item) => `
-          <div class="summary-line">
-            <div>${item.engineName}<br><span class="screen-subtitle">Prev ${item.prev} → End ${item.end}</span></div>
-            <div class="summary-value">+${item.delta}</div>
-          </div>
-        `).join("")}
-      </section>
-    `;
-  }
+  saveAll(all);
+}
 
-  function updateButtons() {
-    const finalizeBtn = document.getElementById("finalizeBtn");
-    const setupBtn = document.getElementById("setupBtn");
-    const logsBtn = document.getElementById("logsBtn");
+function finalizeCurrentDay() {
+  const t = todayKey();
+  const all = ensureRecord(t);
+  const day = all[t];
 
-    logsBtn.textContent = "Logs";
-    logsBtn.disabled = false;
-
-    if (uiState.view === VIEW.LOGS) {
-      finalizeBtn.textContent = "Today";
-      setupBtn.textContent = "Summary";
+  if (mode === "setup") {
+    const missing = assets.filter(name => day[name].current === "");
+    if (missing.length) {
+      alert("Enter current total hours for every system before finishing setup.");
       return;
     }
 
-    if (uiState.view === VIEW.SUMMARY) {
-      finalizeBtn.textContent = uiState.previousView === VIEW.PAST ? "Back to Day" : "Back";
-      setupBtn.textContent = "Logs";
-      return;
-    }
+    assets.forEach(name => {
+      day[name].prev = Number(day[name].current || 0);
+      day[name].manual = !AUTO_ASSETS.has(name);
+    });
 
-    if (uiState.view === VIEW.PAST) {
-      finalizeBtn.textContent = uiState.editMode ? "Finalize This Day" : "Today";
-      setupBtn.textContent = uiState.editMode ? "Summary" : "Edit This Day";
-      return;
-    }
-
-    finalizeBtn.textContent = "Finalize Day";
-    setupBtn.textContent = "Summary";
+    saveAll(all);
+    setSetupDone();
+    setLocked(t, true);
+    showSummary(t);
+    return;
   }
 
-  function render() {
-    updateButtons();
-    if (uiState.view === VIEW.LOGS) {
-      renderLogs();
-      return;
-    }
-    if (uiState.view === VIEW.SUMMARY) {
-      renderSummary();
-      return;
-    }
-    renderTodayOrPast();
+  const missingManual = assets.filter(name => !isAutoAsset(name) && day[name].current === "");
+  if (missingManual.length) {
+    const ok = confirm("Some systems are blank. Finalize anyway?");
+    if (!ok) return;
   }
 
-  function goToToday() {
-    uiState.view = VIEW.TODAY;
-    uiState.selectedDate = isoToday();
-    uiState.editMode = true;
-    uiState.previousView = VIEW.TODAY;
-    render();
+  saveAll(all);
+  setLocked(t, true);
+  showSummary(t);
+}
+
+function startEditSelectedDate() {
+  if (!selectedDate) return;
+  ensureRecord(selectedDate);
+  mode = "edit";
+  activeIndex = 0;
+  while (isAutoAsset(assets[activeIndex])) {
+    activeIndex = getNextIndex(activeIndex);
+  }
+  render();
+  setTimeout(scrollActiveIntoView, 60);
+}
+
+function finalizeEditedDate() {
+  if (!selectedDate) return;
+  const all = ensureRecord(selectedDate);
+  const day = all[selectedDate];
+  const missingManual = assets.filter(name => !isAutoAsset(name) && day[name].current === "");
+  if (missingManual.length) {
+    const ok = confirm("Some systems are blank. Finalize anyway?");
+    if (!ok) return;
   }
 
-  function saveDisplayedDay() {
-    const entered = getInputValuesFromDom();
-    appState = finalizeDayData(appState, uiState.selectedDate, entered);
-    saveState(window.localStorage, appState);
-    uiState.editMode = false;
-    uiState.previousView = uiState.view;
-    uiState.view = VIEW.SUMMARY;
-    render();
+  saveAll(all);
+  setLocked(selectedDate, true);
+  shiftFutureDaysFrom(selectedDate);
+  showSummary(selectedDate);
+}
+
+function handleFinalizeButton() {
+  if (mode === "edit") {
+    showSummary(selectedDate);
+    return;
   }
 
-  function onFinalizePressed() {
-    if (uiState.view === VIEW.LOGS) {
-      goToToday();
-      return;
-    }
-    if (uiState.view === VIEW.SUMMARY) {
-      uiState.view = uiState.previousView;
-      uiState.editMode = uiState.view === VIEW.TODAY;
+  if (mode === "summary") {
+    showSummary(selectedDate);
+    return;
+  }
+
+  if (mode === "logs") {
+    const today = todayKey();
+    if (isLocked(today)) showSummary(today);
+    else {
+      selectedDate = today;
+      mode = "entry";
       render();
-      return;
+      setTimeout(scrollActiveIntoView, 60);
     }
-    if (uiState.view === VIEW.PAST && !uiState.editMode) {
-      goToToday();
-      return;
+    return;
+  }
+
+  if (isLocked(todayKey())) {
+    showSummary(todayKey());
+    return;
+  }
+
+  finalizeCurrentDay();
+}
+
+function handleSetupButton() {
+  if (mode === "summary") {
+    startEditSelectedDate();
+    return;
+  }
+  if (mode === "edit") {
+    finalizeEditedDate();
+    return;
+  }
+  confirmSetup();
+}
+
+function render() {
+  if (mode === "summary") return;
+  if (mode === "logs") return renderLogs();
+  renderEntryOrSetup();
+}
+
+function scrollActiveIntoView() {
+  const active = document.querySelector(".card.active");
+  if (!active) return;
+  const keypad = document.getElementById("keypad");
+  const keypadHeight = keypad && !keypad.classList.contains("hidden") ? keypad.offsetHeight : 0;
+  const rect = active.getBoundingClientRect();
+  const currentTop = window.scrollY || document.documentElement.scrollTop || 0;
+  const visibleHeight = window.innerHeight - keypadHeight - 18;
+  const target = currentTop + rect.top - Math.max(12, (visibleHeight / 2) - (rect.height / 2));
+
+  window.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+  setTimeout(() => {
+    const retryRect = active.getBoundingClientRect();
+    const retryTop = (window.scrollY || document.documentElement.scrollTop || 0) + retryRect.top - Math.max(12, (visibleHeight / 2) - (retryRect.height / 2));
+    window.scrollTo({ top: Math.max(0, retryTop), behavior: "smooth" });
+  }, 180);
+}
+
+function registerSW() {
+  if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+  }
+}
+
+function boot() {
+  document.getElementById("finalizeBtn").addEventListener("click", handleFinalizeButton);
+  document.getElementById("setupBtn").addEventListener("click", handleSetupButton);
+  document.getElementById("logsBtn").addEventListener("click", renderLogs);
+
+  document.addEventListener("touchend", function (e) {
+    const now = Date.now();
+    if (now - lastTouch <= 300) {
+      e.preventDefault();
     }
-    saveDisplayedDay();
+    lastTouch = now;
+  }, { passive: false });
+
+  registerSW();
+
+  if (!isSetupDone()) {
+    initializeSetupDay(false);
+    return;
   }
 
-  function onSetupPressed() {
-    if (uiState.view === VIEW.LOGS) {
-      uiState.previousView = VIEW.LOGS;
-      uiState.view = VIEW.SUMMARY;
-      render();
-      return;
-    }
-    if (uiState.view === VIEW.SUMMARY) {
-      uiState.view = VIEW.LOGS;
-      render();
-      return;
-    }
-    if (uiState.view === VIEW.PAST && !uiState.editMode) {
-      uiState.editMode = true;
-      render();
-      return;
-    }
-    uiState.previousView = uiState.view;
-    uiState.view = VIEW.SUMMARY;
-    render();
+  ensureRecord(todayKey());
+  selectedDate = todayKey();
+
+  if (isLocked(todayKey())) {
+    showSummary(todayKey());
+    return;
   }
 
-  function onLogsPressed() {
-    uiState.previousView = uiState.view;
-    uiState.view = VIEW.LOGS;
-    render();
+  mode = "entry";
+  activeIndex = 0;
+  while (isAutoAsset(assets[activeIndex])) {
+    activeIndex = getNextIndex(activeIndex);
   }
+  render();
+  setTimeout(scrollActiveIntoView, 60);
+}
 
-  function insertIntoActiveInput(value) {
-    const inputs = Array.from(document.querySelectorAll(".engine-input"));
-    const input = inputs[uiState.activeInputIndex];
-    if (!input || input.readOnly) return;
-    if (value === "." && input.value.includes(".")) return;
-    input.value = `${input.value}${value}`;
-  }
+const TEST_API = {
+  assets,
+  AUTO_SOURCE,
+  sortDateKeys,
+  blankDayFromPrevious,
+  updateAutoPairs,
+  shiftFutureDaysFrom,
+  todayKey,
+  parseDateKey,
+  numeric,
+  formatNumber,
+  loadAll,
+  saveAll,
+  ensureRecord,
+  setLocked,
+  isLocked,
+  lockKey,
+  setSetupDone,
+  isSetupDone,
+  getPreviousDateKey,
+  previousDateData
+};
 
-  function backspaceActiveInput() {
-    const inputs = Array.from(document.querySelectorAll(".engine-input"));
-    const input = inputs[uiState.activeInputIndex];
-    if (!input || input.readOnly) return;
-    input.value = input.value.slice(0, -1);
-  }
+if (typeof window !== "undefined") {
+  window.press = press;
+  window.back = back;
+  window.nextField = nextField;
+  window.__APP_TEST__ = TEST_API;
+}
 
-  function moveToNextInput() {
-    const inputs = Array.from(document.querySelectorAll(".engine-input"));
-    if (!inputs.length) return;
-    const nextIndex = Math.min(uiState.activeInputIndex + 1, inputs.length - 1);
-    focusInput(nextIndex);
-  }
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = TEST_API;
+}
 
-  function attachEventHandlers() {
-    document.getElementById("finalizeBtn").addEventListener("click", onFinalizePressed);
-    document.getElementById("setupBtn").addEventListener("click", onSetupPressed);
-    document.getElementById("logsBtn").addEventListener("click", onLogsPressed);
-    document.getElementById("enterBtn").addEventListener("click", moveToNextInput);
-
-    Array.from(document.querySelectorAll("#keypad [data-key]"))
-      .forEach((button) => button.addEventListener("click", () => insertIntoActiveInput(button.dataset.key)));
-
-    const backButton = document.querySelector("#keypad [data-action='backspace']");
-    backButton.addEventListener("click", backspaceActiveInput);
-  }
-
-  function registerServiceWorker() {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./service-worker.js").catch(() => {});
-    }
-  }
-
-  function initApp() {
-    appState = loadState(window.localStorage);
-    uiState.selectedDate = isoToday();
-    uiState.view = VIEW.TODAY;
-    uiState.editMode = true;
-    attachEventHandlers();
-    render();
-    registerServiceWorker();
-  }
-
-  if (typeof window !== "undefined" && typeof document !== "undefined") {
-    window.addEventListener("DOMContentLoaded", initApp);
-  }
-
-  if (typeof module !== "undefined" && module.exports) {
-    module.exports = {
-      ENGINE_NAMES,
-      STORAGE_KEY,
-      createEmptyState,
-      loadState,
-      saveState,
-      getSortedDates,
-      getPreviousEnd,
-      getDayEntriesForDisplay,
-      finalizeDayData,
-      buildSummaryModel,
-      formatHours,
-      formatDelta
-    };
-  }
-})();
+if (typeof document !== "undefined" && document.getElementById) {
+  boot();
+}

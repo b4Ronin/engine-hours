@@ -1,8 +1,9 @@
 {
   "name": "Engine Hours",
-  "short_name": "Hours",
-  "display": "standalone",
+  "short_name": "Engine Hours",
   "start_url": "./index.html",
-  "background_color": "#0b0f14",
-  "theme_color": "#0b0f14"
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": []
 }

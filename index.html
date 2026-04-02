@@ -1,36 +1,41 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Engine Hours</title>
-<link rel="stylesheet" href="style.css">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0b0f14">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Engine Hours</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div id="topbar">
-  <button id="mainBtn" class="lock" onclick="handleMain()">Finalize Day</button>
-  <button id="setupBtn" class="setup" onclick="handleSetup()">Setup</button>
-  <button class="view" onclick="showLogs()">Logs</button>
-</div>
+  <header class="top-bar">
+    <button id="finalizeBtn" class="pill pill-primary">Finalize Day</button>
+    <button id="setupBtn" class="pill pill-accent">Summary</button>
+    <button id="logsBtn" class="pill pill-secondary">Logs</button>
+  </header>
 
-<div id="headerWrap">
-  <h1 id="dateTitle"></h1>
-  <div id="modeLabel">Entry</div>
-</div>
+  <main id="mainContent" aria-live="polite"></main>
 
-<div id="app"></div>
+  <div id="keypad" aria-label="Number keypad">
+    <div class="keys">
+      <button type="button" data-key="1">1</button>
+      <button type="button" data-key="2">2</button>
+      <button type="button" data-key="3">3</button>
+      <button type="button" data-key="4">4</button>
+      <button type="button" data-key="5">5</button>
+      <button type="button" data-key="6">6</button>
+      <button type="button" data-key="7">7</button>
+      <button type="button" data-key="8">8</button>
+      <button type="button" data-key="9">9</button>
+      <button type="button" data-key=".">.</button>
+      <button type="button" data-key="0">0</button>
+      <button type="button" data-action="backspace">⌫</button>
+    </div>
+    <button type="button" id="enterBtn">ENTER</button>
+  </div>
 
-<div id="keypad">
-  <div class="row"><button onclick="press(1)">1</button><button onclick="press(2)">2</button><button onclick="press(3)">3</button></div>
-  <div class="row"><button onclick="press(4)">4</button><button onclick="press(5)">5</button><button onclick="press(6)">6</button></div>
-  <div class="row"><button onclick="press(7)">7</button><button onclick="press(8)">8</button><button onclick="press(9)">9</button></div>
-  <div class="row"><button onclick="press('.')">.</button><button onclick="press(0)">0</button><button onclick="back()">⌫</button></div>
-  <div class="row"><button class="enter" onclick="nextField()">ENTER</button></div>
-</div>
-
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

@@ -132,7 +132,7 @@ function initializeSetupDay(forceReset = false) {
   setLocked(t, false);
   mode = "setup";
   activeIndex = 0;
-  render();
+  render(); setTimeout(scrollActiveIntoView,50);
 }
 
 function confirmSetup() {
@@ -169,7 +169,7 @@ function focusField(i) {
   const name = assets[i];
   if (mode === "entry" && isAutoAsset(name)) return;
   activeIndex = i;
-  render();
+  render(); setTimeout(scrollActiveIntoView,50);
 }
 
 function getNextIndex(i) {
@@ -227,7 +227,7 @@ function updateValue(name, nextString) {
   }
 
   saveAll(all);
-  render();
+  render(); setTimeout(scrollActiveIntoView,50);
 }
 
 function press(value) {
@@ -257,8 +257,8 @@ function back() {
 function nextField() {
   if (mode !== "entry" && mode !== "setup") return;
   if (isLocked()) return;
-  activeIndex = getNextIndex(activeIndex);
-  render();
+  activeIndex = getNextIndex(activeIndex); scrollActiveIntoView();
+  render(); setTimeout(scrollActiveIntoView,50);
 }
 
 function renderEntryOrSetup() {
@@ -444,12 +444,24 @@ function boot() {
   mode = "entry";
   activeIndex = 0;
   while (isAutoAsset(assets[activeIndex])) {
-    activeIndex = getNextIndex(activeIndex);
+    activeIndex = getNextIndex(activeIndex); scrollActiveIntoView();
   }
-  render();
+  render(); setTimeout(scrollActiveIntoView,50);
 }
 
+
+function scrollActiveIntoView(){
+  const active = document.querySelector('.card.active');
+  if(!active) return;
+  const keypad = document.getElementById('keypad');
+  const keypadHeight = keypad ? keypad.offsetHeight : 0;
+  const rect = active.getBoundingClientRect();
+  const offset = rect.top + window.scrollY;
+  const target = offset - (window.innerHeight - keypadHeight)/2 + rect.height/2;
+  window.scrollTo({ top: target, behavior: 'smooth' });
+}
 window.press = press;
+
 window.back = back;
 window.nextField = nextField;
 

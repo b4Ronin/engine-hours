@@ -1,11 +1,17 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-html,body{height:100%}
+html,body{
+  font-family:Arial,sans-serif;
+  background:#0b0f14;
+  color:#fff;
+  margin:0;
+  padding:0;
+}
 body{
   font-family:Arial,sans-serif;
   background:#0b0f14;
   color:#fff;
   margin:0;
-  padding:0 0 35vh 0;
+  padding:0;
 }
 #topbar{
   display:flex;
@@ -37,7 +43,10 @@ body{
   padding:8px 12px;
   font-weight:700;
 }
-#app{padding:8px 10px}
+#app{
+  padding:8px 10px;
+  padding-bottom:40vh;
+}
 .card{
   background:#1a1f2b;
   margin-bottom:8px;

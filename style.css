@@ -1,26 +1,144 @@
-body{font-family:Arial,sans-serif;background:#0b0f14;color:#fff;margin:0;padding:0 0 35vh 0;-webkit-text-size-adjust:100%}
-*{touch-action:manipulation;-webkit-tap-highlight-color:transparent;box-sizing:border-box}
-#topbar{display:flex;height:60px;position:sticky;top:0;z-index:20}
-#topbar button{flex:1;font-size:18px;font-weight:700;border:none}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+html,body{height:100%}
+body{
+  font-family:Arial,sans-serif;
+  background:#0b0f14;
+  color:#fff;
+  margin:0;
+  padding:0 0 35vh 0;
+}
+#topbar{
+  display:flex;
+  height:60px;
+  position:sticky;
+  top:0;
+  z-index:20;
+}
+#topbar button{
+  flex:1;
+  font-size:18px;
+  font-weight:700;
+  border:none;
+}
 .lock{background:#cf3f3f;color:#fff}
 .setup{background:#f0c400;color:#111}
 .view{background:#00a86b;color:#fff}
-#headerWrap{display:flex;justify-content:space-between;align-items:center;padding:10px 12px 4px 12px}
+#headerWrap{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 12px 4px 12px;
+}
 #dateTitle{margin:0;font-size:28px}
-#modeLabel{background:#1f2d3d;color:#d9e8ff;border-radius:999px;padding:8px 12px;font-weight:700}
+#modeLabel{
+  background:#1f2d3d;
+  color:#d9e8ff;
+  border-radius:999px;
+  padding:8px 12px;
+  font-weight:700;
+}
 #app{padding:8px 10px}
-.card{background:#1a1f2b;margin-bottom:8px;padding:12px;border-radius:12px;border:1px solid #2a3345}
-.card.active{border:2px solid #00e5c3;box-shadow:0 0 0 1px rgba(0,229,195,.25)}
+.card{
+  background:#1a1f2b;
+  margin-bottom:8px;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid #2a3345;
+}
+.card.active{
+  border:2px solid #00e5c3;
+  box-shadow:0 0 0 1px rgba(0,229,195,.25);
+}
 .card.auto{background:#182330}
-.rowline{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.labelWrap{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
-.asset-title{font-size:19px;font-weight:800;margin:0}
-.asset-sub{font-size:12px;color:#a8b4c8;font-weight:700}
-input{width:132px;font-size:22px;text-align:right;background:#11161f;color:#00ffcc;border:1px solid #334055;border-radius:10px;padding:8px 10px}
-.summaryHeader{font-size:26px;font-weight:900;margin:4px 0 12px 0}
-.logButton{width:100%;text-align:left;background:#1a1f2b;color:#fff;border:1px solid #2a3345;border-radius:12px;padding:14px;font-size:20px;font-weight:800;margin-bottom:8px}
-#keypad{position:fixed;left:0;right:0;bottom:0;width:100%;height:33vh;background:#000;border-top:1px solid #243040}
+.rowline{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.labelWrap{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  min-width:0;
+}
+.asset-title{
+  font-size:19px;
+  font-weight:800;
+  margin:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.asset-sub{
+  font-size:12px;
+  color:#a8b4c8;
+  font-weight:700;
+}
+.reading{
+  width:132px;
+  min-width:132px;
+  font-size:22px;
+  text-align:right;
+  background:#11161f;
+  color:#00ffcc;
+  border:1px solid #334055;
+  border-radius:10px;
+  padding:8px 10px;
+}
+.reading[disabled]{
+  opacity:1;
+  color:#88f5dd;
+  background:#101821;
+}
+.summaryHeader{
+  font-size:26px;
+  font-weight:900;
+  margin:4px 0 12px 0;
+}
+.summaryValue{
+  font-size:24px;
+  font-weight:900;
+  color:#00ffcc;
+}
+.logButton{
+  width:100%;
+  text-align:left;
+  background:#1a1f2b;
+  color:#fff;
+  border:1px solid #2a3345;
+  border-radius:12px;
+  padding:14px;
+  font-size:20px;
+  font-weight:800;
+  margin-bottom:8px;
+}
+#keypad{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  width:100%;
+  height:33vh;
+  background:#000;
+  border-top:1px solid #243040;
+  z-index:25;
+}
 #keypad .row{display:flex;height:20%}
-#keypad button{flex:1;font-size:28px;background:#111;color:#fff;border:1px solid #222}
-.enter{background:#00cc88!important;color:#111!important;font-weight:900}
+#keypad button{
+  flex:1;
+  font-size:28px;
+  background:#111;
+  color:#fff;
+  border:1px solid #222;
+}
+.enter{
+  background:#00cc88!important;
+  color:#111!important;
+  font-weight:900;
+}
 .hidden{display:none!important}
+.note{
+  color:#c7d3e6;
+  font-size:14px;
+  line-height:1.35;
+}

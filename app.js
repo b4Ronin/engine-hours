@@ -1,240 +1,456 @@
-let activeIndex=0;
-let mode="entry";
-
-const assets=[
-"#1 Generator",
-"#2 Generator",
-"#3 Generator",
-"#4 Generator",
-"E-Generator",
-"Air Comp #1",
-"Air Comp #2",
-"BT #1 Fwd",
-"BT #2 Aft",
-"Azipull #2 Port",
-"Azipull #1 Stbd",
-"Drybulk #1",
-"Drybulk #2",
-"SCBA #1",
-"Liquid Mud #1",
-"Liquid Mud #2",
-"Liquid Mud #3",
-"Liquid Mud #4"
+const assets = [
+  "#1 Generator",
+  "#2 Generator",
+  "#3 Generator",
+  "#4 Generator",
+  "E-Generator",
+  "Air Comp #1",
+  "Air Comp #2",
+  "BT #1 Fwd",
+  "BT #2 Aft",
+  "Azipull #2 Port",
+  "Azipull #1 Stbd",
+  "Drybulk #1",
+  "Drybulk #2",
+  "SCBA #1",
+  "Liquid Mud #1",
+  "Liquid Mud #2",
+  "Liquid Mud #3",
+  "Liquid Mud #4"
 ];
 
-const AUTO_ASSETS=["BT #1 Fwd","Azipull #1 Stbd"];
-const BASELINE_KEY="baseline_set";
+const AUTO_ASSETS = new Set(["BT #1 Fwd", "Azipull #1 Stbd"]);
+const STORAGE_KEY = "engineDataAll";
+const SETUP_KEY = "engineSetupDone";
 
-function todayKey(){return new Date().toISOString().split('T')[0];}
-function loadAll(){return JSON.parse(localStorage.getItem("engineDataAll")||"{}");}
-function saveAll(d){localStorage.setItem("engineDataAll",JSON.stringify(d));}
-function isLocked(date){return localStorage.getItem("locked_"+(date||todayKey()))==="1";}
-function hasBaseline(){return localStorage.getItem(BASELINE_KEY)==="1";}
-function isAutoAsset(name){return hasBaseline() && AUTO_ASSETS.includes(name);}
-function shouldHideKeypad(){return mode!=="entry" || isLocked();}
-function updateKeypadVisibility(){
-  document.getElementById("keypad").classList.toggle("hidden", shouldHideKeypad());
+let activeIndex = 0;
+let mode = "entry";
+let lastTouch = 0;
+
+function todayKey() {
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const yyyy = now.getFullYear();
+  return `${mm}/${dd}/${yyyy}`;
 }
 
-function confirmSetup(){
-  if(confirm("Reset setup and hours?")){
-    localStorage.clear();
-    location.reload();
+function parseDateKey(key) {
+  const parts = key.split("/");
+  return new Date(Number(parts[2]), Number(parts[0]) - 1, Number(parts[1]));
+}
+
+function sortDateKeys(keys) {
+  return [...keys].sort((a, b) => parseDateKey(a) - parseDateKey(b));
+}
+
+function formatNumber(value) {
+  if (value === "" || value === null || value === undefined || Number.isNaN(Number(value))) return "";
+  const num = Number(value);
+  return Number.isInteger(num) ? String(num) : String(num);
+}
+
+function loadAll() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+  } catch (err) {
+    return {};
   }
 }
 
-function finalizeOrSummary(){
-  if(isLocked()){
-    showSummary(todayKey());
-    return;
+function saveAll(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function isSetupDone() {
+  return localStorage.getItem(SETUP_KEY) === "1";
+}
+
+function setSetupDone() {
+  localStorage.setItem(SETUP_KEY, "1");
+}
+
+function lockKey(date) {
+  return `locked_${date}`;
+}
+
+function isLocked(date = todayKey()) {
+  return localStorage.getItem(lockKey(date)) === "1";
+}
+
+function setLocked(date, value) {
+  localStorage.setItem(lockKey(date), value ? "1" : "0");
+}
+
+function previousDateData(data, currentDate) {
+  const dates = sortDateKeys(Object.keys(data).filter(d => d !== currentDate));
+  if (!dates.length) return null;
+  return data[dates[dates.length - 1]];
+}
+
+function blankDayFromPrevious(prevDay) {
+  const day = {};
+  assets.forEach(name => {
+    const prev = prevDay && prevDay[name] ? Number(prevDay[name].current || 0) : 0;
+    day[name] = {
+      prev,
+      current: "",
+      manual: !AUTO_ASSETS.has(name)
+    };
+  });
+  return day;
+}
+
+function ensureTodayRecord() {
+  const all = loadAll();
+  const t = todayKey();
+
+  if (!all[t]) {
+    const prevDay = previousDateData(all, t);
+    all[t] = blankDayFromPrevious(prevDay);
+    all[t]["BT #1 Fwd"].manual = false;
+    all[t]["Azipull #1 Stbd"].manual = false;
+    saveAll(all);
   }
-  localStorage.setItem("locked_"+todayKey(),"1");
-  mode="entry";
-  document.getElementById("finalizeBtn").innerText="View Summary";
-  document.getElementById("modeLabel").innerText="Locked";
-  updateKeypadVisibility();
+
+  return all;
+}
+
+function initializeSetupDay(forceReset = false) {
+  const t = todayKey();
+  const all = forceReset ? {} : loadAll();
+  const day = {};
+  assets.forEach(name => {
+    day[name] = {
+      prev: 0,
+      current: "",
+      manual: true
+    };
+  });
+  all[t] = day;
+  saveAll(all);
+  setLocked(t, false);
+  mode = "setup";
+  activeIndex = 0;
   render();
 }
 
-function showLogs(){
-  mode="logs";
-  document.getElementById("modeLabel").innerText="Logs";
-  updateKeypadVisibility();
-  renderLogs();
-}
-
-function summaryValue(rec, name){
-  if(!rec) return "";
-  if(isAutoAsset(name)){
-    const prev=Number(rec.prev)||0;
-    const today=Number(rec.today)||0;
-    return rec.today==="" ? prev : today;
+function confirmSetup() {
+  const hasData = Object.keys(loadAll()).length > 0 || isSetupDone();
+  if (hasData) {
+    const ok = confirm("Reset all saved data and setup from today's totals?");
+    if (!ok) return;
+    localStorage.clear();
   }
-  return rec.today!=="" && rec.today!==undefined ? rec.today : "";
+  initializeSetupDay(true);
 }
 
-function showSummary(date){
-  mode="summary";
-  const app=document.getElementById("app");
-  const all=loadAll();
-  const d=all[date]||{};
-  document.getElementById("dateTitle").innerText=date;
-  document.getElementById("modeLabel").innerText="Summary";
-  updateKeypadVisibility();
-  app.innerHTML=`<div class="summaryHeader">Summary — ${date}</div>`;
-  assets.forEach(name=>{
-    const val=summaryValue(d[name],name);
-    app.innerHTML+=`<div class="card"><div class="rowline"><div class="asset-title">${name}</div><div class="asset-title">${val}</div></div></div>`;
-  });
+function currentDayData() {
+  const all = ensureTodayRecord();
+  return all[todayKey()];
 }
 
-function renderLogs(){
-  const app=document.getElementById("app");
-  const all=loadAll();
-  const dates=Object.keys(all).sort().reverse();
-  document.getElementById("dateTitle").innerText="Logs";
-  app.innerHTML="";
-  if(!dates.length){
-    app.innerHTML='<div class="card"><div class="asset-title">No saved logs yet</div></div>';
-    return;
+function setHeader(dateText, labelText) {
+  document.getElementById("dateTitle").innerText = dateText;
+  document.getElementById("modeLabel").innerText = labelText;
+}
+
+function isAutoAsset(name) {
+  return isSetupDone() && AUTO_ASSETS.has(name);
+}
+
+function setupCompleteForToday() {
+  return mode !== "setup" && isSetupDone();
+}
+
+function focusField(i) {
+  if (mode !== "entry" && mode !== "setup") return;
+  if (isLocked()) return;
+  const name = assets[i];
+  if (mode === "entry" && isAutoAsset(name)) return;
+  activeIndex = i;
+  render();
+}
+
+function getNextIndex(i) {
+  let n = (i + 1) % assets.length;
+  while (mode === "entry" && isAutoAsset(assets[n])) {
+    n = (n + 1) % assets.length;
   }
-  dates.forEach(date=>{
-    app.innerHTML+=`<button class="logButton" onclick="showSummary('${date}')">${date}</button>`;
-  });
-}
-
-function promptBaseline(all,t){
-  let bt1=prompt("Enter TOTAL hours for BT #1 Fwd (baseline):","0");
-  let azi1=prompt("Enter TOTAL hours for Azipull #1 Stbd (baseline):","0");
-  if(bt1===null) bt1="0";
-  if(azi1===null) azi1="0";
-  if(!all[t]) all[t]={};
-  all[t]["BT #1 Fwd"]={prev:Number(bt1)||0,today:""};
-  all[t]["Azipull #1 Stbd"]={prev:Number(azi1)||0,today:""};
-  localStorage.setItem(BASELINE_KEY,"1");
-}
-
-function initDay(){
-  const all=loadAll();
-  const t=todayKey();
-  if(!all[t]){
-    all[t]={};
-    const previousDates=Object.keys(all).filter(k=>k!==t).sort();
-    const prevDay=previousDates.length?all[previousDates[previousDates.length-1]]:{};
-    assets.forEach(n=>{
-      let prev=(prevDay[n]&&prevDay[n].today!=="")?prevDay[n].today:0;
-      if(isAutoAsset(n) && prevDay[n] && prevDay[n].today==="") prev=Number(prevDay[n].prev)||0;
-      all[t][n]={prev:prev,today:""};
-    });
-    if(!hasBaseline()) promptBaseline(all,t);
-    saveAll(all);
-  }
-}
-
-function getNextIndex(i){
-  let n=(i+1)%assets.length;
-  while(isAutoAsset(assets[n])) n=(n+1)%assets.length;
   return n;
 }
 
-function render(){
-  if(mode!=="entry") return;
-  const app=document.getElementById("app");
-  const all=loadAll();
-  const t=todayKey();
-  const d=all[t];
-  document.getElementById("dateTitle").innerText=t;
-  document.getElementById("finalizeBtn").innerText=isLocked()?"View Summary":"Finalize Day";
-  document.getElementById("modeLabel").innerText=isLocked()?"Locked":"Entry";
-  updateKeypadVisibility();
-  app.innerHTML="";
-
-  assets.forEach((name,i)=>{
-    const val=d[name].today;
-    const prev=d[name].prev;
-    const auto=isAutoAsset(name);
-    const disabled=isLocked()||auto;
-    const div=document.createElement("div");
-    div.className="card"+(i===activeIndex&&!isLocked()&&!auto?" active":"")+(auto?" auto":"");
-    div.innerHTML=`<div class="rowline">
-      <div class="labelWrap">
-        <div class="asset-title">${name}</div>
-        <div class="asset-sub">${auto?"AUTO from paired unit difference":"Prev: "+prev}</div>
-      </div>
-      <input readonly value="${val!==''?val:''}" onclick="focusField(${i})" ${disabled?"disabled":""}>
-    </div>`;
-    app.appendChild(div);
-  });
+function getEditableForMode(name) {
+  if (isLocked()) return false;
+  if (mode === "setup") return true;
+  if (mode === "entry" && isAutoAsset(name)) return false;
+  return mode === "entry";
 }
 
-function focusField(i){
-  if(isLocked()) return;
-  if(isAutoAsset(assets[i])) return;
-  activeIndex=i;
-  render();
-}
+function updateAutoPairs(day) {
+  const bt2Current = Number(day["BT #2 Aft"].current);
+  const bt2Prev = Number(day["BT #2 Aft"].prev || 0);
+  const bt1Prev = Number(day["BT #1 Fwd"].prev || 0);
 
-function press(v){
-  if(isLocked()) return;
-  const name=assets[activeIndex];
-  if(isAutoAsset(name)) return;
-  const all=loadAll();
-  const t=todayKey();
-  let cur=(all[t][name].today ?? "").toString();
-  if(cur==="0") cur="";
-  if(v==="."&&cur.includes(".")) return;
-  cur+=v;
-  update(name,cur);
-}
-
-function back(){
-  if(isLocked()) return;
-  const name=assets[activeIndex];
-  if(isAutoAsset(name)) return;
-  const all=loadAll();
-  const t=todayKey();
-  let cur=(all[t][name].today ?? "").toString();
-  cur=cur.slice(0,-1);
-  update(name,cur||"");
-}
-
-function nextField(){
-  if(isLocked()) return;
-  activeIndex=getNextIndex(activeIndex);
-  render();
-}
-
-function update(name,value){
-  const all=loadAll();
-  const t=todayKey();
-  const d=all[t];
-  d[name].today=value===""?"":Number(value);
-
-  if(name==="BT #2 Aft"){
-    const diff=(Number(d["BT #2 Aft"].today)||0)-(Number(d["BT #2 Aft"].prev)||0);
-    d["BT #1 Fwd"].today=(Number(d["BT #1 Fwd"].prev)||0)+diff;
+  if (Number.isFinite(bt2Current)) {
+    const btDiff = bt2Current - bt2Prev;
+    day["BT #1 Fwd"].current = bt1Prev + btDiff;
+  } else {
+    day["BT #1 Fwd"].current = "";
   }
 
-  if(name==="Azipull #2 Port"){
-    const diff=(Number(d["Azipull #2 Port"].today)||0)-(Number(d["Azipull #2 Port"].prev)||0);
-    d["Azipull #1 Stbd"].today=(Number(d["Azipull #1 Stbd"].prev)||0)+diff;
+  const az2Current = Number(day["Azipull #2 Port"].current);
+  const az2Prev = Number(day["Azipull #2 Port"].prev || 0);
+  const az1Prev = Number(day["Azipull #1 Stbd"].prev || 0);
+
+  if (Number.isFinite(az2Current)) {
+    const azDiff = az2Current - az2Prev;
+    day["Azipull #1 Stbd"].current = az1Prev + azDiff;
+  } else {
+    day["Azipull #1 Stbd"].current = "";
+  }
+}
+
+function updateValue(name, nextString) {
+  const all = ensureTodayRecord();
+  const t = todayKey();
+  const day = all[t];
+
+  if (nextString === "") {
+    day[name].current = "";
+  } else {
+    day[name].current = Number(nextString);
+  }
+
+  if (mode === "entry") {
+    updateAutoPairs(day);
   }
 
   saveAll(all);
   render();
 }
 
-let lastTouchEnd=0;
-document.addEventListener("touchend",function(e){
-  const now=Date.now();
-  if(now-lastTouchEnd<=300) e.preventDefault();
-  lastTouchEnd=now;
-},{passive:false});
+function press(value) {
+  if (mode !== "entry" && mode !== "setup") return;
+  const name = assets[activeIndex];
+  if (!getEditableForMode(name)) return;
 
-document.getElementById("dateTitle").innerText=todayKey();
-initDay();
-if(isLocked()){
-  document.getElementById("finalizeBtn").innerText="View Summary";
-  document.getElementById("modeLabel").innerText="Locked";
+  const day = currentDayData();
+  let current = day[name].current === "" ? "" : String(day[name].current);
+  if (current === "0") current = "";
+  if (value === "." && current.includes(".")) return;
+  current += String(value);
+  updateValue(name, current);
 }
-render();
+
+function back() {
+  if (mode !== "entry" && mode !== "setup") return;
+  const name = assets[activeIndex];
+  if (!getEditableForMode(name)) return;
+
+  const day = currentDayData();
+  let current = day[name].current === "" ? "" : String(day[name].current);
+  current = current.slice(0, -1);
+  updateValue(name, current);
+}
+
+function nextField() {
+  if (mode !== "entry" && mode !== "setup") return;
+  if (isLocked()) return;
+  activeIndex = getNextIndex(activeIndex);
+  render();
+}
+
+function renderEntryOrSetup() {
+  const app = document.getElementById("app");
+  const day = currentDayData();
+  const locked = isLocked();
+
+  setHeader(todayKey(), mode === "setup" ? "Setup" : (locked ? "Locked" : "Entry"));
+  document.getElementById("finalizeBtn").innerText = locked ? "View Summary" : "Finalize Day";
+  document.getElementById("keypad").classList.toggle("hidden", locked);
+
+  app.innerHTML = "";
+
+  assets.forEach((name, i) => {
+    const isAuto = mode === "entry" && isAutoAsset(name);
+    const editable = getEditableForMode(name);
+    const current = day[name].current;
+    const prev = Number(day[name].prev || 0);
+    const subtitle = mode === "setup"
+      ? "Enter current total hours"
+      : (isAuto ? "AUTO from paired unit difference" : `Prev: ${formatNumber(prev)}`);
+
+    const div = document.createElement("div");
+    div.className = "card" +
+      ((i === activeIndex && editable) ? " active" : "") +
+      (isAuto ? " auto" : "");
+
+    div.innerHTML = `
+      <div class="rowline">
+        <div class="labelWrap">
+          <div class="asset-title">${name}</div>
+          <div class="asset-sub">${subtitle}</div>
+        </div>
+        <input
+          class="reading"
+          readonly
+          value="${formatNumber(current)}"
+          ${editable ? "" : "disabled"}
+        >
+      </div>
+    `;
+
+    div.querySelector("input").addEventListener("click", () => focusField(i));
+    div.addEventListener("click", () => focusField(i));
+    app.appendChild(div);
+  });
+}
+
+function summaryValueForAsset(day, name) {
+  if (!day || !day[name]) return "";
+  if (day[name].current === "" || day[name].current === null || day[name].current === undefined) {
+    return formatNumber(day[name].prev || 0);
+  }
+  return formatNumber(day[name].current);
+}
+
+function showSummary(date) {
+  mode = "summary";
+  const app = document.getElementById("app");
+  const all = loadAll();
+  const day = all[date] || {};
+
+  document.getElementById("keypad").classList.add("hidden");
+  document.getElementById("finalizeBtn").innerText = isLocked(date) ? "View Summary" : "Finalize Day";
+  setHeader(date, "Summary");
+
+  app.innerHTML = `<div class="summaryHeader">Summary — ${date}</div>`;
+  assets.forEach(name => {
+    app.innerHTML += `
+      <div class="card">
+        <div class="rowline">
+          <div class="asset-title">${name}</div>
+          <div class="summaryValue">${summaryValueForAsset(day, name)}</div>
+        </div>
+      </div>
+    `;
+  });
+}
+
+function renderLogs() {
+  mode = "logs";
+  const app = document.getElementById("app");
+  const all = loadAll();
+  const dates = sortDateKeys(Object.keys(all)).reverse();
+
+  document.getElementById("keypad").classList.add("hidden");
+  setHeader(todayKey(), "Logs");
+
+  app.innerHTML = "";
+  if (!dates.length) {
+    app.innerHTML = '<div class="card"><div class="asset-title">No saved logs yet</div></div>';
+    return;
+  }
+
+  dates.forEach(date => {
+    const button = document.createElement("button");
+    button.className = "logButton";
+    button.type = "button";
+    button.textContent = date;
+    button.addEventListener("click", () => showSummary(date));
+    app.appendChild(button);
+  });
+}
+
+function finalizeOrSummary() {
+  const t = todayKey();
+
+  if (isLocked(t)) {
+    showSummary(t);
+    return;
+  }
+
+  const all = ensureTodayRecord();
+  const day = all[t];
+
+  if (mode === "setup") {
+    const missing = assets.filter(name => day[name].current === "");
+    if (missing.length) {
+      alert("Enter current total hours for every system before finishing setup.");
+      return;
+    }
+
+    assets.forEach(name => {
+      day[name].prev = Number(day[name].current || 0);
+      day[name].manual = !AUTO_ASSETS.has(name);
+    });
+
+    day["BT #1 Fwd"].manual = false;
+    day["Azipull #1 Stbd"].manual = false;
+
+    saveAll(all);
+    setSetupDone();
+    mode = "entry";
+    setLocked(t, true);
+    document.getElementById("finalizeBtn").innerText = "View Summary";
+    showSummary(t);
+    return;
+  }
+
+  const missingManual = assets.filter(name => !isAutoAsset(name) && day[name].current === "");
+  if (missingManual.length) {
+    const ok = confirm("Some systems are blank. Finalize anyway?");
+    if (!ok) return;
+  }
+
+  saveAll(all);
+  setLocked(t, true);
+  document.getElementById("finalizeBtn").innerText = "View Summary";
+  showSummary(t);
+}
+
+function render() {
+  if (mode === "summary") return;
+  if (mode === "logs") return renderLogs();
+  renderEntryOrSetup();
+}
+
+function boot() {
+  document.getElementById("finalizeBtn").addEventListener("click", finalizeOrSummary);
+  document.getElementById("setupBtn").addEventListener("click", confirmSetup);
+  document.getElementById("logsBtn").addEventListener("click", renderLogs);
+
+  document.addEventListener("touchend", function (e) {
+    const now = Date.now();
+    if (now - lastTouch <= 300) {
+      e.preventDefault();
+    }
+    lastTouch = now;
+  }, { passive: false });
+
+  if (!isSetupDone()) {
+    initializeSetupDay(false);
+    return;
+  }
+
+  ensureTodayRecord();
+
+  if (isLocked(todayKey())) {
+    showSummary(todayKey());
+    return;
+  }
+
+  mode = "entry";
+  activeIndex = 0;
+  while (isAutoAsset(assets[activeIndex])) {
+    activeIndex = getNextIndex(activeIndex);
+  }
+  render();
+}
+
+window.press = press;
+window.back = back;
+window.nextField = nextField;
+
+boot();

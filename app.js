@@ -33,11 +33,39 @@ function loadAll(){return JSON.parse(localStorage.getItem("engineDataAll")||"{}"
 function saveAll(d){localStorage.setItem("engineDataAll",JSON.stringify(d));}
 function isLocked(){return localStorage.getItem("locked_"+todayKey())==="1";}
 
+function formatDate(dateStr){
+  if(!dateStr) return "";
+  if(dateStr.includes("-")){
+    const parts=dateStr.split("-");
+    if(parts.length===3){
+      return parts[1].padStart(2,"0")+"/"+parts[2].padStart(2,"0")+"/"+parts[0];
+    }
+  }
+  if(dateStr.includes("/")){
+    const parts=dateStr.split("/");
+    if(parts.length===3){
+      if(parts[0].length===4){
+        return parts[1].padStart(2,"0")+"/"+parts[2].padStart(2,"0")+"/"+parts[0];
+      }
+      return parts[0].padStart(2,"0")+"/"+parts[1].padStart(2,"0")+"/"+parts[2];
+    }
+  }
+  return dateStr;
+}
+
 function confirmSetup(){
   if(confirm("Reset setup and hours?")){
     localStorage.clear();
     location.reload();
   }
+}
+
+function handleTopLeftButton(){
+  if(mode!=="entry"){
+    showEntry();
+    return;
+  }
+  finalizeOrSummary();
 }
 
 function finalizeOrSummary(){
@@ -51,11 +79,28 @@ function finalizeOrSummary(){
   showSummary(todayKey());
 }
 
+function updateTopLeftButton(){
+  const btn=document.getElementById("finalizeBtn");
+  if(mode!=="entry"){
+    btn.innerText="Back to Today";
+    return;
+  }
+  btn.innerText=isLocked()?"Summary":"Finalize Day";
+}
+
 function showLogs(){
   mode="logs";
   document.getElementById("keypad").classList.add("hidden");
   document.getElementById("modeLabel").innerText="Logs";
+  updateTopLeftButton();
   renderLogs();
+}
+
+function showEntry(){
+  mode="entry";
+  render();
+  updateTopLeftButton();
+  setTimeout(scrollToActive, 60);
 }
 
 function showSummary(date){
@@ -63,10 +108,11 @@ function showSummary(date){
   const app=document.getElementById("app");
   const all=loadAll();
   const d=all[date]||{};
-  document.getElementById("dateTitle").innerText=date;
+  document.getElementById("dateTitle").innerText=formatDate(date);
   document.getElementById("keypad").classList.add("hidden");
   document.getElementById("modeLabel").innerText="Summary";
-  app.innerHTML='<div class="summaryHeader">'+date+'</div>';
+  updateTopLeftButton();
+  app.innerHTML='<div class="summaryHeader">'+formatDate(date)+'</div>';
   assets.forEach(function(name){
     const val=(d[name]&&d[name].today!==""&&d[name].today!==null&&d[name].today!==undefined)?d[name].today:"";
     app.innerHTML+='<div class="card"><div class="rowline"><div class="asset-title">'+name+'</div><div class="asset-title">'+val+'</div></div></div>';
@@ -77,14 +123,14 @@ function renderLogs(){
   const app=document.getElementById("app");
   const all=loadAll();
   const dates=Object.keys(all).sort().reverse();
-  document.getElementById("dateTitle").innerText=todayKey();
+  document.getElementById("dateTitle").innerText=formatDate(todayKey());
   app.innerHTML="";
   if(!dates.length){
     app.innerHTML='<div class="card"><div class="asset-title">No saved logs yet</div></div>';
     return;
   }
   dates.forEach(function(date){
-    app.innerHTML+='<button class="logButton" onclick="showSummary(\''+date+'\')">'+date+'</button>';
+    app.innerHTML+='<button class="logButton" onclick="showSummary(\''+date+'\')">'+formatDate(date)+'</button>';
   });
 }
 
@@ -123,14 +169,20 @@ function getNextIndex(i){
   return n;
 }
 
+function scrollToActive(){
+  const active=document.querySelector(".card.active");
+  if(!active) return;
+  active.scrollIntoView({behavior:"smooth", block:"center"});
+}
+
 function render(){
   if(mode!=="entry") return;
   const app=document.getElementById("app");
   const all=loadAll(), t=todayKey(), d=all[t];
-  document.getElementById("dateTitle").innerText=t;
-  document.getElementById("finalizeBtn").innerText=isLocked()?"Summary":"Finalize Day";
+  document.getElementById("dateTitle").innerText=formatDate(t);
   document.getElementById("modeLabel").innerText=isLocked()?"Locked":"Entry";
   document.getElementById("keypad").classList.toggle("hidden",isLocked());
+  updateTopLeftButton();
   app.innerHTML="";
 
   assets.forEach(function(name,i){
@@ -143,6 +195,8 @@ function render(){
     div.innerHTML='<div class="rowline"><div class="labelWrap"><div class="asset-title">'+name+'</div><div class="asset-sub">'+(isAuto?"AUTO from paired unit difference":"Prev: "+prev)+'</div></div><input readonly value="'+(val!==""?val:"")+'" onclick="focusField('+i+')" '+(disabled?"disabled":"")+"></div>";
     app.appendChild(div);
   });
+
+  setTimeout(scrollToActive, 60);
 }
 
 function focusField(i){
@@ -150,6 +204,7 @@ function focusField(i){
   if(assets[i]==="BT #1 Fwd"||assets[i]==="Azipull #1 Stbd") return;
   activeIndex=i;
   render();
+  setTimeout(scrollToActive, 60);
 }
 
 function press(v){
@@ -178,6 +233,7 @@ function nextField(){
   if(isLocked()) return;
   activeIndex=getNextIndex(activeIndex);
   render();
+  setTimeout(scrollToActive, 60);
 }
 
 function update(name,value){
@@ -199,9 +255,9 @@ function update(name,value){
 }
 
 initDay();
-document.getElementById("dateTitle").innerText=todayKey();
+document.getElementById("dateTitle").innerText=formatDate(todayKey());
 if(isLocked()){
-  document.getElementById("finalizeBtn").innerText="Summary";
   document.getElementById("modeLabel").innerText="Locked";
 }
+updateTopLeftButton();
 render();

@@ -1,0 +1,15 @@
+body{font-family:Arial,sans-serif;background:#0b0f14;color:#fff;margin:0;padding:0 0 35vh 0}
+#topbar{display:flex;height:60px;position:sticky;top:0}
+#topbar button{flex:1;font-size:18px;font-weight:700;border:none}
+.lock{background:#cf3f3f;color:#fff}
+.setup{background:#f0c400;color:#111}
+.view{background:#00a86b;color:#fff}
+#headerWrap{display:flex;justify-content:space-between;padding:10px}
+#dateTitle{font-size:26px;margin:0}
+#modeLabel{background:#1f2d3d;color:#d9e8ff;border-radius:999px;padding:8px 12px;font-weight:700;height:max-content}
+.card{background:#1a1f2b;margin:8px;padding:12px;border-radius:10px}
+.card.active{border:2px solid #00e5c3}
+#keypad{position:fixed;bottom:0;width:100%;height:33vh;background:#000}
+#keypad .row{display:flex;height:20%}
+#keypad button{flex:1;font-size:24px}
+.enter{background:#00cc88;color:#111}

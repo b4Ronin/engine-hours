@@ -6,10 +6,15 @@
 <link rel="stylesheet" href="style.css">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0b0f14">
+<style>
+.editDayBtn{width:100%;background:#24364b;color:#fff;border:1px solid #334055;border-radius:12px;padding:14px;font-size:18px;font-weight:800;margin:0 0 12px 0}
+.editField{width:100%;font-size:22px;text-align:right;background:#11161f;color:#00ffcc;border:1px solid #334055;border-radius:10px;padding:10px 12px}
+.editRow{display:flex;justify-content:space-between;align-items:center;gap:10px}
+</style>
 </head>
 <body>
 <div id="topbar">
-  <button id="mainBtn" class="lock" onclick="handleMain()">Finalize Day</button>
+  <button id="finalizeBtn" class="lock" onclick="handleTopLeftButton()">Finalize Day</button>
   <button class="setup" onclick="confirmSetup()">Setup</button>
   <button class="view" onclick="showLogs()">Logs</button>
 </div>

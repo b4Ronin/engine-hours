@@ -1,5 +1,6 @@
-body{background:#0b0f14;color:#fff;font-family:Arial;margin:0}
+body{background:#0b0f14;color:#fff;font-family:Arial;margin:0;padding-bottom:120px}
 #topbar{display:flex}
-#topbar button{flex:1;padding:15px;font-size:16px}
-.card{background:#1a1f2b;margin:8px;padding:10px;border-radius:10px}
-.editBtn{width:100%;padding:12px;margin:10px 0;background:#00a86b;color:#fff;font-weight:bold;border:none;border-radius:8px}
+#topbar button{flex:1;padding:14px;font-weight:bold}
+.card{background:#1a1f2b;margin:8px;padding:12px;border-radius:10px}
+.active{border:2px solid #00e5c3}
+.editBtn{width:100%;background:#00a86b;color:#fff;padding:12px;margin:10px 0;border:none;border-radius:8px;font-weight:bold}

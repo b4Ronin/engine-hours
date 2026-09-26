@@ -1,0 +1,1 @@
+{"name":"my-comic-vaults","private":true,"version":"1.0.0","engines":{"node":">=18"},"dependencies":{"@netlify/blobs":"latest","@netlify/functions":"latest"}}

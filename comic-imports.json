@@ -1,1 +1,31 @@
-{"comics":[]}
+{
+  "comics": [
+    {
+      "certNumber": "4518111003",
+      "title": "Star Wars: Battle of Jakku - Insurgency Rising",
+      "issue": "2",
+      "issueDate": "12/24",
+      "year": "2024",
+      "publisher": "Marvel Comics",
+      "variant": "Trinity Comics \"Virgin\" Edition B",
+      "grade": "9.8",
+      "pageQuality": "WHITE",
+      "label": "Signature Series",
+      "signature": "Erik M. Gist",
+      "signedDate": "10/19/24",
+      "writer": "Alex Segura",
+      "artist": "Leonard Kirk",
+      "coverArtist": "E.M. Gist",
+      "gradeDate": "2024-12-20",
+      "graderNotes": "CGC Signature Series witnessed the Erik M. Gist signing on 10/19/24.",
+      "census": "22 in 9.8; 0 higher; Top Pop",
+      "notes": "",
+      "tags": [
+        "Star Wars",
+        "Signature Series",
+        "Darth Vader"
+      ],
+      "dateAdded": "2026-09-26T00:00:00.000Z"
+    }
+  ]
+}

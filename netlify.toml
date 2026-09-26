@@ -1,0 +1,13 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/comics/*"
+  to = "/.netlify/functions/comics/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/comics"
+  to = "/.netlify/functions/comics"
+  status = 200

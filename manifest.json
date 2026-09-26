@@ -1,8 +1,1 @@
-{
-  "name": "Engine Hours",
-  "short_name": "Engine Hours",
-  "display": "standalone",
-  "start_url": "./index.html",
-  "background_color": "#0b0f14",
-  "theme_color": "#0b0f14"
-}
+{"name":"My Comic Vaults","short_name":"Comic Vaults","start_url":"/","display":"standalone","background_color":"#050a08","theme_color":"#07120d","icons":[]}
